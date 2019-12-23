@@ -31,6 +31,7 @@ public class EllaController {
 
     // Help items **********************
 
+    @FXML
     protected MenuItem aboutItem;
 
     // **********************
