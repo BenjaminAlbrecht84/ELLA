@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.StackedAreaChart?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8.0.65" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ella.view.detailsView.monitorView.MonitorController">
+    <top>
+    </top>
+    <bottom>
+    </bottom>
+   <center>
+            <VBox>
+                <children>
+                    <GridPane VBox.vgrow="ALWAYS">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                        </columnConstraints>
+                        <rowConstraints>
+                            <RowConstraints percentHeight="40.0" valignment="CENTER" vgrow="ALWAYS" />
+                            <RowConstraints percentHeight="60.0" vgrow="ALWAYS" />
+                        </rowConstraints>
+                        <children>
+                            <BorderPane GridPane.columnSpan="2" GridPane.halignment="CENTER" GridPane.valignment="CENTER" GridPane.vgrow="ALWAYS">
+                                <center>
+                                    <VBox style="-fx-border-color: darkGrey; -fx-border-width: 1; -fx-border-insets: 1;" BorderPane.alignment="CENTER">
+                                        <children>
+                                            <Label fx:id="workLabel" alignment="CENTER" text="Workflow" textAlignment="CENTER" VBox.vgrow="ALWAYS">
+                                                <VBox.margin>
+                                                    <Insets />
+                                                </VBox.margin>
+                                                <padding>
+                                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                                </padding>
+                                                <font>
+                                                    <Font size="17.0" />
+                                                </font>
+                                            </Label>
+                                            <HBox fx:id="workflow" alignment="CENTER" spacing="50.0">
+                                                <padding>
+                                                    <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                                                </padding>
+                                            </HBox>
+                                            <HBox style="-fx-background-color: lightGrey;">
+                                                <children>
+                                                    <Label fx:id="uptime" text="Uptime: ">
+                                                        <font>
+                                                            <Font size="12.0" />
+                                                        </font>
+                                                    </Label>
+                                                </children>
+                                                <padding>
+                                                    <Insets bottom="5.0" left="10.0" right="10.0" top="5.0" />
+                                                </padding>
+                                            </HBox>
+                                        </children>
+                                    </VBox>
+                                </center>
+                            </BorderPane>
+                            <VBox style="-fx-border-color: darkGrey; -fx-border-width: 1; -fx-border-insets: 1;" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                <children>
+                                    <StackedAreaChart fx:id="heap" title="Heap">
+                                        <xAxis>
+                                            <CategoryAxis side="BOTTOM" />
+                                        </xAxis>
+                                        <yAxis>
+                                            <NumberAxis label="GB" side="LEFT" fx:id="xHeap" />
+                                        </yAxis>
+                                    </StackedAreaChart>
+                                    <HBox fx:id="heapBox" spacing="10.0" style="-fx-background-color: lightGrey;">
+                                        <padding>
+                                            <Insets bottom="5.0" left="50.0" right="20.0" top="5.0" />
+                                        </padding>
+                                    </HBox>
+                                </children>
+                            </VBox>
+                            <VBox style="-fx-border-color: darkGrey; -fx-border-insets: 1; -fx-border-width: 1;" GridPane.rowIndex="1">
+                                <children>
+                                    <LineChart fx:id="cpu" title="CPU">
+                                        <xAxis>
+                                            <CategoryAxis side="BOTTOM" />
+                                        </xAxis>
+                                        <yAxis>
+                                            <NumberAxis label="\%" side="LEFT" fx:id="xCPU" />
+                                        </yAxis>
+                                    </LineChart>
+                                    <HBox fx:id="cpuBox" spacing="10.0" style="-fx-background-color: lightGrey;">
+                                        <padding>
+                                            <Insets bottom="5.0" left="60.0" right="20.0" top="5.0" />
+                                        </padding>
+                                    </HBox>
+                                </children>
+                            </VBox>
+                        </children>
+                        <padding>
+                            <Insets bottom="10.0" left="5.0" right="5.0" top="10.0" />
+                        </padding>
+                        <VBox.margin>
+                            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                        </VBox.margin>
+                    </GridPane>
+                </children>
+            </VBox>
+   </center>
+</BorderPane>
