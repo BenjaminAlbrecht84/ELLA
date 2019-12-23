@@ -42,6 +42,7 @@ public class IndexSettings {
         this.cancelButton = controller.cancelButton;
 
         this.input = controller.input;
+        input.setEditable(false);
         this.inButton = controller.inButton;
         this.database = controller.output;
         this.outButton = controller.outButton;
@@ -49,8 +50,13 @@ public class IndexSettings {
         this.volume = controller.volume;
 
         setUpActions();
+        setUpBindings();
         setUpLayout();
 
+    }
+
+    private void setUpBindings() {
+        outButton.disableProperty().bind(input.textProperty().isEmpty());
     }
 
     private Properties readInProperties() {
@@ -72,8 +78,7 @@ public class IndexSettings {
             setOutputFiles();
         });
         outButton.setOnAction(e -> {
-            chooseFolder(database.textProperty(), "Select database folder");
-            setOutputName(input.getText());
+            chooseOutputFolder(database.textProperty(), "Select database folder");
         });
         addButton.setOnAction(e -> {
             String[] inputs = input.getText().split("\n");
@@ -155,13 +160,21 @@ public class IndexSettings {
         }
     }
 
-    private void chooseFolder(StringProperty s, String title) {
+    private void chooseOutputFolder(StringProperty s, String title) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle(title);
         File dir = chooser.showDialog(stage);
-        if (dir != null) {
-            s.set(dir.getAbsolutePath());
-            setProperties(title, dir.getAbsolutePath());
+        if (dir != null && !input.getText().isEmpty()) {
+            String[] files = input.getText().split("\n");
+            StringBuilder content = new StringBuilder();
+            for (String f : files) {
+                if (!f.isEmpty()) {
+                    String ending = getFileExtension(f);
+                    String fileName = new File(f).getName().replaceAll(ending, ".edb");
+                    content.append(dir.getAbsolutePath() + File.separator + fileName + "\n");
+                }
+            }
+            s.setValue(content.toString());
         }
     }
 

@@ -61,8 +61,10 @@ public class AlignSettings {
         this.info = controller.info;
 
         this.reference = controller.reference;
+        reference.setEditable(false);
         this.refButton = controller.refButton;
         this.input = controller.inputArea;
+        input.setEditable(false);
         this.inButton = controller.inButton;
         this.output = controller.outputArea;
         this.outButton = controller.outButton;
@@ -81,8 +83,13 @@ public class AlignSettings {
         this.refButton = controller.refButton;
 
         setUpActions();
+        setUpBindings();
         setUpLayout();
 
+    }
+
+    private void setUpBindings() {
+        outButton.disableProperty().bind(input.textProperty().isEmpty());
     }
 
     private void setUpActions() {
@@ -98,8 +105,7 @@ public class AlignSettings {
             setOutputFiles();
         });
         outButton.setOnAction(e -> {
-            chooseFolder(output.textProperty(), "Select output folder");
-            setOutputName(input.getText());
+            chooseOutputFolder(output.textProperty(), "Select output folder");
         });
         addButton.setOnAction(e -> {
             String[] inputs = input.getText().split("\n");
@@ -227,13 +233,21 @@ public class AlignSettings {
         }
     }
 
-    private void chooseFolder(StringProperty s, String title) {
+    private void chooseOutputFolder(StringProperty s, String title) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle(title);
         File dir = chooser.showDialog(stage);
-        if (dir != null) {
-            s.set(dir.getAbsolutePath());
-            setProperties(title, dir.getAbsolutePath());
+        if (dir != null && !input.getText().isEmpty()) {
+                String[] files = input.getText().split("\n");
+                StringBuilder content = new StringBuilder();
+                for (String f : files) {
+                    if (!f.isEmpty()) {
+                        String ending = getFileExtension(f);
+                        String fileName = new File(f).getName().replaceAll(ending, ".daa");
+                        content.append(dir.getAbsolutePath() + File.separator + fileName + "\n");
+                    }
+                }
+                s.setValue(content.toString());
         }
     }
 

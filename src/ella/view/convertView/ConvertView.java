@@ -42,6 +42,7 @@ public class ConvertView {
         this.properties = readInProperties();
 
         daaArea = controller.daaArea;
+        daaArea.setEditable(false);
         outArea = controller.outArea;
         coresField = controller.coresField;
 
@@ -54,15 +55,21 @@ public class ConvertView {
         formatBox = controller.formatBox;
 
         setUpActions();
+        setUpBindings();
         setUpLayout();
     }
+
+    private void setUpBindings() {
+        outButton.disableProperty().bind(daaArea.textProperty().isEmpty());
+    }
+
 
     private void setUpActions() {
         daaButton.setOnAction(e -> {
             chooseFiles(daaArea.textProperty(), "Select DAA file", "DaaFile");
             setOutputFiles();
         });
-        outButton.setOnAction(e -> chooseFolder(outArea.textProperty(), "Select output folder"));
+        outButton.setOnAction(e -> chooseOutputFolder(outArea.textProperty(), "Select output folder"));
         convertButton.setOnAction(e -> {
             String[] daas = daaArea.getText().split("\n");
             String[] outputs = outArea.getText().split("\n");
@@ -77,6 +84,7 @@ public class ConvertView {
                 }
             }
         });
+        formatBox.valueProperty().addListener((a, b, c) -> setOutputFiles());
     }
 
     private void setUpLayout() {
@@ -118,13 +126,22 @@ public class ConvertView {
         }
     }
 
-    private void chooseFolder(StringProperty s, String title) {
+    private void chooseOutputFolder(StringProperty s, String title) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle(title);
         File dir = chooser.showDialog(stage);
-        if (dir != null) {
-            s.set(dir.getAbsolutePath());
-            setProperties(title, dir.getAbsolutePath());
+        if (dir != null && !daaArea.getText().isEmpty()) {
+            String[] files = daaArea.getText().split("\n");
+            StringBuilder content = new StringBuilder();
+            for (String f : files) {
+                if (!f.isEmpty()) {
+                    String ending = getFileEnding(f);
+                    String newEnding = formatBox.getSelectionModel().getSelectedItem().split("\\*.")[1].replaceAll("\\)", "");
+                    String fileName = new File(f).getName().replaceAll(ending, "." + newEnding);
+                    content.append(dir.getAbsolutePath() + File.separator + fileName + "\n");
+                }
+            }
+            s.setValue(content.toString());
         }
     }
 

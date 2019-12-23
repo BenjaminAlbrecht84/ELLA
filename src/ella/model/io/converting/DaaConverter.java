@@ -72,7 +72,7 @@ public class DaaConverter {
     }
 
     public void initializeStatistics() {
-        String matrix = daaReader.getDaaHeader().getScoreMatrix();
+        String matrix = daaReader.getDaaHeader().getScoreMatrix().toUpperCase();
         int gapOpen = daaReader.getDaaHeader().getGapOpen();
         int gapExtend = daaReader.getDaaHeader().getGapExtend();
         long dbLetters = daaReader.getDaaHeader().getDbLetters().longValue();
@@ -95,7 +95,7 @@ public class DaaConverter {
     public void reportProgress(String message) {
         if (presenter != null && daaReader != null) {
             String daaFile = daaReader.getDaaFile().getName();
-            presenter.reportConvertStatus(daaFile + ": " + message, true);
+            presenter.reportConvertStatus("Processing " + daaFile + " - " + message, true);
         }
     }
 }
