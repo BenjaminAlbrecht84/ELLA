@@ -80,7 +80,7 @@ public class ScoringMatrix {
 
         try {
 
-            InputStream is = this.getClass().getResourceAsStream("/NCBI_ScoringMatrices/" + type);
+            InputStream is = this.getClass().getResourceAsStream("/ella/resources/matrices/" + type);
             BufferedReader buf = new BufferedReader(new InputStreamReader(is));
 
             alphabet = new ArrayList<String>();
