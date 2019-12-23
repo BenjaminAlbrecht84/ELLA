@@ -57,7 +57,7 @@ public class Taskmanager {
             case "blastx":
                 if (AlignOptionHandler.run((mode + " " + settings).split("\\s+"), false)) {
                     taskQueue.add(task);
-                    presenter.reportNewTask(task.getId(), "blastx", settings);
+                    presenter.reportNewTask(task.getId(), "blastx", settings, description);
                     if (isRunning.get())
                         task.start();
                 }
@@ -65,7 +65,7 @@ public class Taskmanager {
             case "index":
                 if (IndexOptionHandler.run((mode + " " + settings).split("\\s+"))) {
                     taskQueue.add(task);
-                    presenter.reportNewTask(task.getId(), "index", settings);
+                    presenter.reportNewTask(task.getId(), "index", settings, description);
                     if (isRunning.get())
                         task.start();
                 }

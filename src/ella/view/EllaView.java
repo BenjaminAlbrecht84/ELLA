@@ -217,8 +217,8 @@ public class EllaView {
         taskView.reportLogInfo(id, info);
     }
 
-    public void reportNewTask(int id, String mode, String settings) {
-        taskView.reportNewTask(id, mode, settings);
+    public void reportNewTask(int id, String mode, String settings, String description) {
+        taskView.reportNewTask(id, mode, settings, description);
     }
 
     public void reportProgressList(int id, ObservableList<Object[]> progressList) {

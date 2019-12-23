@@ -86,10 +86,11 @@ public class TaskView extends BorderPane {
         detailsView.reportLogInfo(info);
     }
 
-    public void reportNewTask(int id, String mode, String settings) {
+    public void reportNewTask(int id, String mode, String settings, String description) {
 
         // setting up details view
         Stage detailsStage = new Stage();
+        detailsStage.setTitle("Details of " + description);
         detailsStage.setScene(new Scene(new DetailsView()));
         id2detailsStage.put(id, detailsStage);
         DetailsView detailsView = (DetailsView) id2detailsStage.get(id).getScene().getRoot();

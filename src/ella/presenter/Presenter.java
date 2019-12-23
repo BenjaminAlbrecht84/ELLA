@@ -82,8 +82,8 @@ public class Presenter {
         view.reportLogInfo(id, info);
     }
 
-    public void reportNewTask(int id, String mode, String settings) {
-        view.reportNewTask(id, mode, settings);
+    public void reportNewTask(int id, String mode, String settings, String description) {
+        view.reportNewTask(id, mode, settings, description);
     }
 
     public int getNextTaskID() {
