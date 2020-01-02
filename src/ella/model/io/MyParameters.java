@@ -4,8 +4,6 @@ import ella.model.aligner.utils.BlastStatisticsHelper;
 import ella.model.aligner.utils.ScoringMatrix;
 import ella.model.aligner.utils.CyclicSeedShape;
 
-import java.io.File;
-
 public class MyParameters {
 
     //input parameters

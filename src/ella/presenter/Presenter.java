@@ -2,7 +2,7 @@ package ella.presenter;
 
 import ella.model.Taskmanager;
 import ella.model.aligner.aligning.Aligner;
-import ella.model.aligner.indexing.IndexCreator;
+import ella.model.aligner.indexing.creator1.IndexCreator;
 import ella.model.io.converting.DaaConverter;
 import javafx.application.Platform;
 import ella.view.EllaView;

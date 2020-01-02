@@ -1,7 +1,7 @@
 package ella.startUp;
 
 import ella.model.aligner.aligning.Aligner;
-import ella.model.aligner.indexing.IndexCreator;
+import ella.model.aligner.indexing.creator1.IndexCreator;
 import ella.model.io.MyParameters;
 
 import java.io.File;

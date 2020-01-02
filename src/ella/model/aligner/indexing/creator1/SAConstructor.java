@@ -1,4 +1,4 @@
-package ella.model.aligner.indexing;
+package ella.model.aligner.indexing.creator1;
 
 import java.io.File;
 import java.io.IOException;
@@ -7,7 +7,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import ella.model.aligner.indexing.IndexCreator.InputParser;
+import ella.model.aligner.indexing.IndexText;
+import ella.model.aligner.indexing.IndexWriter;
+import ella.model.aligner.indexing.SuffixArrayTable;
+import ella.model.aligner.indexing.creator1.IndexCreator.InputParser;
 import ella.model.aligner.utils.CyclicSeedShape;
 import ella.model.aligner.utils.bigArrays.UnsignedIntArray;
 import ella.model.aligner.utils.suffixArray.EnhancedSuffixArray;
@@ -54,7 +57,7 @@ public class SAConstructor {
 
         writeSuffixArrayTable();
         long runtime = (System.currentTimeMillis() - time) / 1000;
-        indexCreator.reportFinish(runtime + "s", 2);
+        indexCreator.reportFinish("("+runtime + "s)", 2);
 
         // writing pointers
         try {
@@ -79,7 +82,6 @@ public class SAConstructor {
 
     private synchronized void reportSuffixArray(EnhancedSuffixArray esa) {
         suffixArrayTable.addSuffixArray(esa);
-        // System.out.println(Runtime.getRuntime().freeMemory() + " < " + (1. / 4.) * Runtime.getRuntime().totalMemory());
         if (Runtime.getRuntime().freeMemory() < (1. / 4.) * Runtime.getRuntime().totalMemory())
             writeSuffixArrayTable();
     }
@@ -87,8 +89,6 @@ public class SAConstructor {
     private void writeSuffixArrayTable() {
         try {
             IndexWriter.writeSuffixArrayTable2File(outFile, suffixArrayTable, indexText);
-            // for (ByteArrayWrapper p : suffixArrayTable.getSuffixArrayTable().keySet())
-            // IndexWriter.writeSuffixArrays2File(outFile, p, suffixArrayTable.getSuffixArrayTable().get(p));
             suffixArrayTable.clearTable();
         } catch (IOException e) {
             // TODO Auto-generated catch block

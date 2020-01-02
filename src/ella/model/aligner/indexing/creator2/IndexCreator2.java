@@ -1,28 +1,32 @@
-package ella.model.aligner.indexing;
-
-import java.io.File;
-import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+package ella.model.aligner.indexing.creator2;
 
 import ella.model.Taskmanager;
+import ella.model.aligner.indexing.IndexText;
+import ella.model.aligner.indexing.IndexWriter;
+import ella.model.aligner.indexing.creator2.SAConstructor;
 import ella.model.aligner.utils.Alphabet;
+import ella.model.aligner.utils.CyclicSeedShape;
 import ella.model.aligner.utils.Minimizer;
 import ella.model.aligner.utils.PrefixArrayManager;
-import ella.model.aligner.utils.CyclicSeedShape;
 import ella.model.aligner.utils.streams.MyByteStream;
 import ella.model.aligner.utils.streams.MyIntegerStream;
 import ella.model.aligner.utils.wrapper.ByteArrayWrapper;
-import ella.model.io.ByteWriter;
-import ella.model.io.FastaCounter;
+import ella.model.io.*;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 
-public class IndexCreator {
+import java.io.File;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class IndexCreator2 {
+
+    private FastaIterator fastaIterator;
+    private long MEMORY_LIMIT, LETTER_LIMIT;
+    private AtomicLong batchSize, batchLetters;
 
     private SAConstructor constructor;
     private String message = "";
@@ -100,19 +104,22 @@ public class IndexCreator {
         long numOfSequences = (long) fileInfo[0];
         long[] batchBounderies = (long[]) fileInfo[2];
         long runtime = (System.currentTimeMillis() - startTime) / 1000;
-        int batchCounter = 0;
         totalBatches = batchBounderies.length - 1;
         int approxNumOfBatchSequences = (int) (numOfSequences / totalBatches);
         System.out.println("#Letters: " + fileInfo[1] + " | #Sequences: " + fileInfo[0] + " | #Batches: " + totalBatches + " | (" + runtime + "s)");
         System.out.println("Uptime: " + (runtime / 60) + "min " + (runtime % 60) + "s");
 
-        for (batch = 1; batch < batchBounderies.length; batch++) {
+        fastaIterator = new FastaIterator(inFile);
+        computeLimits(size, sepDepth);
+
+        int batchCounter = 0;
+        while (fastaIterator.hasNext()) {
 
             batchCounter++;
-
+            batch = batchCounter;
+            batchLetters = new AtomicLong(0);
+            batchSize = new AtomicLong(200);
             long numOfBatchLetters = 0, numOfBatchSequences = 0;
-            long batchSize = batchBounderies[batch] - batchBounderies[batch - 1];
-            long batchChunk = batchSize / cores;
 
             try {
 
@@ -121,13 +128,11 @@ public class IndexCreator {
                 message = "Batch " + batchCounter + "/" + totalBatches + " - Reading in data...";
                 setStatus(">" + message);
                 long time = System.currentTimeMillis();
-                maxProgress = batchSize;
-                ArrayList<InputParser> inputParsers = new ArrayList<InputParser>();
-                for (long i = 0; i < cores; i++) {
-                    long batchStart = batchBounderies[batch - 1] + i * batchChunk;
+                maxProgress = approxNumOfBatchSequences;
+                ArrayList<InputParser> inputParsers = new ArrayList<>();
+                for (long i = 0; i < Math.max(cores, 1); i++) {
                     int approxNumOfChunkSequences = approxNumOfBatchSequences / cores;
-                    InputParser parser = new InputParser(inFile, sepDepth, p, q, batchStart, batchChunk, approxNumOfChunkSequences,
-                            avgSequenceLength);
+                    InputParser parser = new InputParser(sepDepth, p, q, approxNumOfChunkSequences, avgSequenceLength);
                     inputParsers.add(parser);
                 }
                 runInParallel(inputParsers, cores);
@@ -135,7 +140,7 @@ public class IndexCreator {
                 reportFinish("(" + runtime + "s)", 0);
 
                 // adding text offset
-                HashMap<ByteArrayWrapper, Long> prefixSizes = new HashMap<ByteArrayWrapper, Long>();
+                HashMap<ByteArrayWrapper, Long> prefixSizes = new HashMap<>();
                 for (InputParser parser : inputParsers) {
                     numOfBatchLetters += parser.getLetterCounter();
                     numOfBatchSequences += parser.getSequenceCounter();
@@ -201,7 +206,7 @@ public class IndexCreator {
                 // constructing suffix arrays
                 IndexWriter.writeSuffixTableHeader2File(p, q, sepDepth, edbFile);
                 constructor = new SAConstructor(indexText, sepDepth, p, q, cores, edbFile, this);
-                Set<ByteArrayWrapper> prefixes = new PrefixArrayManager(sepDepth).getPrefixes();
+                ArrayList<ByteArrayWrapper> prefixes = new ArrayList<>(prefixSizes.keySet());
                 for (ByteArrayWrapper prefix : prefixes) {
                     if (prefixSizes.get(prefix) > 0)
                         constructor.addSAConstructor(prefix, seedShapes, indexText, inputParsers, prefixSizes.get(prefix));
@@ -249,11 +254,16 @@ public class IndexCreator {
             constructor.stop();
     }
 
+    private synchronized StringBuffer[] getNextFastaEntry() {
+        if (fastaIterator.hasNext())
+            return fastaIterator.next();
+        return null;
+    }
+
     public class InputParser implements Runnable {
 
-        private File dbFile;
+        private FastaIterator fastaIterator;
         private int sepDepth, p, q;
-        private long start, chunk;
         private int locationBufferSize, textBufferSize;
 
         private long letterCounter = 0;
@@ -262,13 +272,10 @@ public class IndexCreator {
         private MyIntegerStream locationBuffer;
         private MyByteStream textBuffer;
 
-        public InputParser(File dbFile, int sepDepth, int p, int q, long start, long chunk, int numOfSequences, int avgSequenceLength) {
-            this.dbFile = dbFile;
+        public InputParser(int sepDepth, int p, int q, int numOfSequences, int avgSequenceLength) {
             this.sepDepth = sepDepth;
             this.p = p;
             this.q = q;
-            this.start = start;
-            this.chunk = chunk;
             this.locationBufferSize = numOfSequences * 2 + 2;
             locationBufferSize = (int) Math.round(new Double(locationBufferSize) * 1.2);
             this.textBufferSize = numOfSequences * avgSequenceLength;
@@ -300,61 +307,22 @@ public class IndexCreator {
             locationBuffer = new MyIntegerStream(locationBufferSize);
             textBuffer = new MyByteStream(textBufferSize);
 
-            try {
-                RandomAccessFile raf = new RandomAccessFile(dbFile, "r");
-                raf.seek(start);
-                byte[] readBuffer = new byte[10000];
-                StringBuffer sequenceBuffer = new StringBuffer(), idBuffer = new StringBuffer();
-                int charCounter = 0, readChars = 0;
-                boolean parseSeq = false, parseID = false;
-                while ((readChars = raf.read(readBuffer)) != -1) {
+            StringBuffer[] entry;
+            while ((entry = getNextFastaEntry()) != null) {
 
-                    if (isStopped)
-                        break;
+                // storing protein data
+                StringBuffer acc = entry[0], seq = entry[1];
+                storeProteinData(entry[0], entry[1]);
+                sequenceCounter++;
+                letterCounter += seq.length();
+                reportProgress(1, 0);
 
-                    for (int i = 0; i < readChars; i++) {
-                        char c = (char) readBuffer[i];
-                        charCounter++;
-                        if (!parseSeq && c == '\n')
-                            parseSeq = true;
-                        else if (c == '>') {
-                            if (idBuffer.length() > 0 && sequenceBuffer.length() > 0) {
-                                storeProteinData(idBuffer, sequenceBuffer);
-                                sequenceCounter++;
-                            }
-                            if (charCounter > chunk) {
-                                break;
-                            }
-                            parseSeq = false;
-                            parseID = true;
-                            sequenceBuffer.setLength(0);
-                            idBuffer.setLength(0);
-                        } else if (parseSeq && c != '\n') {
-                            char aa = c;
-                            sequenceBuffer.append(aa);
-                        } else if (parseID && (c == '\n' || c == ' '))
-                            parseID = false;
-                        else if (parseID) {
-                            idBuffer.append(c);
-                        }
+                // updating and checking memory footprint
+                batchLetters.getAndAdd(seq.length() + acc.length());
+                batchSize.getAndAdd(8 + seq.length() * 7 + acc.length());
+                if (batchLetters.get() > LETTER_LIMIT || batchSize.get() > MEMORY_LIMIT)
+                    break;
 
-                    }
-                    reportProgress(readChars, 0);
-                    if (readChars < readBuffer.length) {
-                        storeProteinData(idBuffer, sequenceBuffer);
-                        sequenceCounter++;
-                    }
-                    if (charCounter > chunk)
-                        break;
-                }
-                readBuffer = null;
-
-                // finishing reading file
-                raf.close();
-
-            } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
             }
 
             latch.countDown();
@@ -374,7 +342,7 @@ public class IndexCreator {
                 if (start + p - 2 >= q - 1) {
                     int[] min = (int[]) minimizer.getMinimium();
                     if (lastMin == null || min != lastMin) {
-                        lastMin = (int[]) min;
+                        lastMin = min;
                         ByteArrayWrapper kmer = getKMer(sequenceBuffer, min[0], sepDepth);
                         long pos = textBuffer.size() + min[0];
                         prefixManager.addValue(kmer, pos);
@@ -391,8 +359,6 @@ public class IndexCreator {
             ByteWriter.write(textBuffer, (byte) 127);
             ByteWriter.write(textBuffer, id.toString());
             ByteWriter.write(textBuffer, (byte) 127);
-
-            letterCounter += sequenceBuffer.length();
 
         }
 
@@ -424,6 +390,21 @@ public class IndexCreator {
             return textBuffer;
         }
 
+    }
+
+    private void computeLimits(Long size, int sepDepth) {
+        long PREFIX_NUMBER = cmpNumOfPrefixes(sepDepth);
+        MEMORY_LIMIT = MyParameters.MAX_MEMORY - 1 * (int) Math.pow(10, 9) - PREFIX_NUMBER * 4;
+        LETTER_LIMIT = (2 * (long) Integer.MAX_VALUE) - 100000;
+        if (size != null)
+            MEMORY_LIMIT = Math.min(MEMORY_LIMIT, size);
+    }
+
+    private static int cmpNumOfPrefixes(int sepDepth) {
+        int n = Alphabet.getReducedAminoacids().length();
+        for (int i = 0; i < sepDepth - 1; i++)
+            n *= Alphabet.getReducedAminoacids().length();
+        return n;
     }
 
     private String getPMer(StringBuffer sequence, int pos, int p) {

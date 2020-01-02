@@ -11,7 +11,7 @@ public class Minimizer {
 
 	public Minimizer(int p, int q) {
 		this.maxSize = q - p + 1;
-		pMerList = new LinkedList<Object[]>();
+		pMerList = new LinkedList<>();
 		minScore = Integer.MAX_VALUE;
 	}
 
