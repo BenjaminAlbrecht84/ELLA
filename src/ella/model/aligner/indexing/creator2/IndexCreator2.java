@@ -3,7 +3,6 @@ package ella.model.aligner.indexing.creator2;
 import ella.model.Taskmanager;
 import ella.model.aligner.indexing.IndexText;
 import ella.model.aligner.indexing.IndexWriter;
-import ella.model.aligner.indexing.creator2.SAConstructor;
 import ella.model.aligner.utils.Alphabet;
 import ella.model.aligner.utils.CyclicSeedShape;
 import ella.model.aligner.utils.Minimizer;
@@ -33,7 +32,7 @@ public class IndexCreator2 {
     private Taskmanager taskmanager;
     private CountDownLatch latch;
     private long maxProgress, progress, lastProgress;
-    private int batch, totalBatches;
+    private long batch, totalBatches;
     private DoubleProperty totalProgress = new SimpleDoubleProperty(0);
     private boolean isStopped = false;
 
@@ -94,24 +93,21 @@ public class IndexCreator2 {
     private void createIndexData(File inFile, int sepDepth, CyclicSeedShape[] seedShapes, int p, int q, int cores, File edbFile, Long size) {
 
         System.out.println("Parsing input file " + inFile.getAbsolutePath());
-
         long startTime = System.currentTimeMillis();
+        setDatabaseSizeThresholds(size, sepDepth);
 
         System.out.println("> Scanning input file...");
         setStatus(">Scanning input file...");
-        Object[] fileInfo = FastaCounter.run(inFile, sepDepth, size, p, q);
-        int avgSequenceLength = (int) ((long) fileInfo[1] / (long) fileInfo[0]);
-        long numOfSequences = (long) fileInfo[0];
-        long[] batchBounderies = (long[]) fileInfo[2];
+        long[] fileInfo = scanInputFile(inFile);
+        int avgSequenceLength = (int) (fileInfo[1] / fileInfo[0]);
+        long numOfSequences = fileInfo[0];
         long runtime = (System.currentTimeMillis() - startTime) / 1000;
-        totalBatches = batchBounderies.length - 1;
+        totalBatches = fileInfo[2];
         int approxNumOfBatchSequences = (int) (numOfSequences / totalBatches);
-        System.out.println("#Letters: " + fileInfo[1] + " | #Sequences: " + fileInfo[0] + " | #Batches: " + totalBatches + " | (" + runtime + "s)");
+        System.out.println("#Aminoacids: " + fileInfo[1] + " | #Sequences: " + numOfSequences + " | #Batches: " + totalBatches + " | (" + runtime + "s)");
         System.out.println("Uptime: " + (runtime / 60) + "min " + (runtime % 60) + "s");
 
         fastaIterator = new FastaIterator(inFile);
-        computeLimits(size, sepDepth);
-
         int batchCounter = 0;
         while (fastaIterator.hasNext()) {
 
@@ -201,7 +197,7 @@ public class IndexCreator2 {
                 runtime = System.currentTimeMillis() - time;
 
                 // writing text to file
-                IndexWriter.writeIndexFile2File(indexText, edbFile, ID, BUILD_NR, VERSION_NR, batch == 1, totalBatches);
+                IndexWriter.writeIndexFile2File(indexText, edbFile, ID, BUILD_NR, VERSION_NR, batch == 1, (int) totalBatches);
 
                 // constructing suffix arrays
                 IndexWriter.writeSuffixTableHeader2File(p, q, sepDepth, edbFile);
@@ -232,6 +228,25 @@ public class IndexCreator2 {
         runtime = (System.currentTimeMillis() - startTime) / 1000;
         System.out.println("Runtime: " + (runtime / 60) + "min " + (runtime % 60) + "s\n");
 
+    }
+
+    private long[] scanInputFile(File inFile) {
+        fastaIterator = new FastaIterator(inFile);
+        long batchLetters = 0, totalSeqeuenceLength = 0, numOfSequences = 0, batchSize = 200, totalBatches = 1;
+        while (fastaIterator.hasNext()) {
+            StringBuffer[] entry = fastaIterator.next();
+            numOfSequences++;
+            totalSeqeuenceLength += entry[1].length();
+            batchLetters += entry[0].length() + entry[1].length();
+            batchSize += getMemoryFootprint(entry[0], entry[1]);
+            if (batchLetters > LETTER_LIMIT || batchSize > MEMORY_LIMIT) {
+                totalBatches++;
+                batchSize = 200;
+                batchLetters = 0;
+            }
+        }
+        long[] result = {numOfSequences, totalSeqeuenceLength, totalBatches};
+        return result;
     }
 
     public void runInParallel(ArrayList<InputParser> threads, int cores) {
@@ -319,7 +334,7 @@ public class IndexCreator2 {
 
                 // updating and checking memory footprint
                 batchLetters.getAndAdd(seq.length() + acc.length());
-                batchSize.getAndAdd(8 + seq.length() * 7 + acc.length());
+                batchSize.getAndAdd(getMemoryFootprint(acc, seq));
                 if (batchLetters.get() > LETTER_LIMIT || batchSize.get() > MEMORY_LIMIT)
                     break;
 
@@ -392,7 +407,11 @@ public class IndexCreator2 {
 
     }
 
-    private void computeLimits(Long size, int sepDepth) {
+    private int getMemoryFootprint(StringBuffer acc, StringBuffer seq) {
+        return 8 + seq.length() * 7 + acc.length();
+    }
+
+    private void setDatabaseSizeThresholds(Long size, int sepDepth) {
         long PREFIX_NUMBER = cmpNumOfPrefixes(sepDepth);
         MEMORY_LIMIT = MyParameters.MAX_MEMORY - 1 * (int) Math.pow(10, 9) - PREFIX_NUMBER * 4;
         LETTER_LIMIT = (2 * (long) Integer.MAX_VALUE) - 100000;
